@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>INTODESHALLAH välkommen till mitt API</h1>
+    <br />
+    <h2>Routerna</h2>
+    <p>
+      🔒 GET/users - returnerar alla användare som finns i databasen. ID, name
+      och username medföljer
+    </p>
+    <p>
+      🔒 GET/users/{id} - returnerar en användare med specifikt id, samma värden
+      som i users routen medföljer
+    </p>
+    <p>
+      POST/users - skapar en ny användare och accepterar JSON object på formatet
+      {"username", "password", "name"}
+    </p>
+    <p>
+      🔒 PUT/users/{id} - ändrar en befintlig användare med specifikt id och
+      accepterar JSON object med formatet {"username", "password", "name"}
+    </p>
+    <p>
+      POST/login - tar JSON object med formatet {"username", "password"} och
+      jämför det med databasen. Ifall infon matchar med en användare som finns i
+      databasen loggas man in och får en bearer token som behövs för att komma
+      åt alla låsta router
+    </p>
+    <p>🔒 = kräver en giltig bearer token i authorization header</p>
+  </body>
+</html>

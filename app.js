@@ -10,8 +10,8 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // parse application/json
 app.use(bodyParser.json());
 
-app.get("/", (req, res) => {
-  res.send("<h1>inshallah välkommen till API (som är min)<h1>");
+app.get("/", function (req, res) {
+  res.sendFile(__dirname + "/index.html");
 });
 
 var con = mysql.createConnection({
@@ -22,12 +22,16 @@ var con = mysql.createConnection({
 });
 
 app.get("/users", function (req, res) {
-  //kod här för att hantera anrop…
-  var sql = "SELECT * FROM users";
-  con.query(sql, function (err, result, fields) {
-    if (err) throw err;
-    res.send(result);
-  });
+  decoded = verifyJWT(req.headers, "secret of secrets");
+  if (decoded) {
+    var sql = "SELECT id,name,username FROM users";
+    con.query(sql, function (err, result, fields) {
+      if (err) throw err;
+      res.send(result);
+    });
+  } else {
+    res.sendStatus(498);
+  }
 });
 
 app.listen(port, () => {
@@ -44,6 +48,7 @@ app.post("/users", function (req, res) {
       if (err) throw err;
       console.log("1 record inserted");
       console.log(result);
+      delete req.body.password;
       res.send(req.body);
     });
   } else {
@@ -52,23 +57,55 @@ app.post("/users", function (req, res) {
 });
 
 app.put("/users/:id", function (req, res) {
-  //kod här för att hantera anrop…
-  let sql = `UPDATE users 
-  SET username = '${req.body.username}', name = '${req.body.name}')
-  WHERE id = ${req.params.id}`;
-  con.query(sql, function (err, result, fields) {
-    if (err) throw err;
-    res.json(result);
-  });
+  decoded = verifyJWT(req.headers, "secret of secrets");
+  if (decoded) {
+    if (
+      req.body.username == undefined ||
+      req.body.name == undefined ||
+      req.body.password == undefined
+    ) {
+      console.log(
+        "You need to change all variables (username,name,password) , if you wish to keep your old username/name/password write your old one."
+      );
+      res.sendStatus(400);
+    } else {
+      let sql = `UPDATE users
+      SET username = '${req.body.username}', name = '${req.body.name}',
+      password = '${hash(req.body.password)}' WHERE id = ${req.params.id}`;
+      con.query(sql, function (err, result, fields) {
+        if (err) throw err;
+        //kod här för att hantera returnera data…
+        var sql = "SELECT * FROM users WHERE id = " + req.params.id;
+        con.query(sql, function (err, result, fields) {
+          if (err) throw err;
+          delete result[0].password;
+          res.json(result);
+        });
+      });
+    }
+  } else {
+    res.sendStatus(498);
+  }
 });
 
 app.get("/users/:id", function (req, res) {
-  //kod här för att hantera anrop…
-  var sql = "SELECT * FROM users WHERE id = " + req.params.id;
-  con.query(sql, function (err, result, fields) {
-    if (err) throw err;
-    res.json(result);
-  });
+  decoded = verifyJWT(req.headers, "secret of secrets");
+  if (decoded) {
+    res.send("Token checks out!");
+    var sql = "SELECT * FROM users WHERE id = " + req.params.id;
+    con.query(sql, function (err, result, fields) {
+      if (err) throw err;
+      if (result.length === 0) {
+        res.sendStatus(204);
+      } else {
+        console.log(result[0].password);
+        delete result[0].password;
+        res.json(result);
+      }
+    });
+  } else {
+    res.sendStatus(498);
+  }
 });
 
 function hash(data) {
@@ -82,7 +119,6 @@ app.post("/login", function (req, res) {
   con.query(sql, function (err, result, fields) {
     if (err) throw err;
     let passwordHash = hash(req.body.password);
-    console.log(passwordHash);
     if (passwordHash === result[0].password) {
       let user = result[0];
       console.log(user);
@@ -99,10 +135,25 @@ app.post("/login", function (req, res) {
 });
 
 app.get("/auth-test", function (req, res) {
-  let authHeader = req.headers["authorization"];
-  if (authHeader === undefined) {
+  decoded = verifyJWT(req.headers, "secret of secrets");
+  if (decoded) {
+    res.send("Token checks out!");
+  } else {
     res.sendStatus(498);
   }
-  let token = authHeader.slice(7); // tar bort "BEARER " från headern.
-  console.log("Token present");
 });
+
+function verifyJWT(headers, secret) {
+  let authHeader = headers["authorization"];
+  if (authHeader === undefined) {
+    res.sendStatus(498);
+    return false;
+  }
+  let token = authHeader.slice(7);
+  try {
+    const decoded = jwt.verify(token, secret);
+    return decoded;
+  } catch (err) {
+    return false;
+  }
+}
