@@ -56,7 +56,7 @@ app.post("/users", function (req, res) {
   }
 });
 
-app.put("/users/:id", function (req, res) {
+/* app.put("/users/:id", function (req, res) {
   decoded = verifyJWT(req.headers, "secret of secrets");
   if (decoded) {
     if (
@@ -77,7 +77,6 @@ app.put("/users/:id", function (req, res) {
         //kod här för att hantera returnera data…
         var sql = "SELECT * FROM users WHERE id = " + req.params.id;
         con.query(sql, function (err, result, fields) {
-          if (err) throw err;
           delete result[0].password;
           res.json(result);
         });
@@ -85,6 +84,42 @@ app.put("/users/:id", function (req, res) {
     }
   } else {
     res.sendStatus(498);
+  }
+}); */
+
+app.put("/users/:id", function (req, res) {
+  //kod här för att hantera anrop…
+
+  decoded = verifyJWT(req.headers, "secret of secrets");
+  if (decoded) {
+    if (
+      req.body.username == undefined ||
+      req.body.name == undefined ||
+      req.body.password == undefined
+    ) {
+      console.log(
+        "You need to change all variables (username,name,password) , if you wish to keep your old username/name/password write your old one."
+      );
+      res.sendStatus(400);
+    } else {
+      let sql = `UPDATE users
+SET username = '${req.body.username}', name = '${
+        req.body.name
+      }' , password = '${hash(req.body.password)}'
+      WHERE id = ${req.params.id}`;
+      con.query(sql, function (err, result, fields) {
+        if (err) throw err;
+        //kod här för att hantera returnera data…
+        var sql = "SELECT * FROM users WHERE id = " + req.params.id;
+        con.query(sql, function (err, result, fields) {
+          if (err) throw err;
+          delete result[0].password;
+          res.json(result);
+        });
+      });
+    }
+  } else {
+    res.sendStatus(422);
   }
 });
 
@@ -146,7 +181,6 @@ app.get("/auth-test", function (req, res) {
 function verifyJWT(headers, secret) {
   let authHeader = headers["authorization"];
   if (authHeader === undefined) {
-    res.sendStatus(498);
     return false;
   }
   let token = authHeader.slice(7);
